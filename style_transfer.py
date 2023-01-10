@@ -50,6 +50,7 @@ if __name__ == "__main__":
     parser = TestOptions()
     args = parser.parse()
     print('*'*98)
+    os.makedirs(args.output_path, exist_ok=True)
     
     
     device = "cpu" if args.cpu else "cuda"
@@ -99,6 +100,8 @@ if __name__ == "__main__":
     if args.video:
         cropname = os.path.join(args.output_path, basename + '_input.mp4')
         savename = os.path.join(args.output_path, basename + '_vtoonify_' +  args.backbone[0] + '.mp4')
+
+        print('Saving result to ' + savename)
 
         video_cap = cv2.VideoCapture(filename)
         num = int(video_cap.get(7))
