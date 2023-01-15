@@ -50,6 +50,7 @@ if __name__ == "__main__":
     parser = TestOptions()
     args = parser.parse()
     print('*'*98)
+    os.makedirs(args.output_path, exist_ok=True)
     
     
     device = "cpu" if args.cpu else "cuda"
@@ -99,17 +100,35 @@ if __name__ == "__main__":
     if args.video:
         cropname = os.path.join(args.output_path, basename + '_input.mp4')
         savename = os.path.join(args.output_path, basename + '_vtoonify_' +  args.backbone[0] + '.mp4')
-
+        
         video_cap = cv2.VideoCapture(filename)
-        num = int(video_cap.get(7))
+        num = 0
+        while True:
+            success, frame = video_cap.read()
+            if success == False:
+                break
+            num += 1
+        print("nums = ", num)
+        video_cap = cv2.VideoCapture(filename)
+
+
 
         first_valid_frame = True
         batch_frames = []
+        last_frame=None
+        print("filenmae =", filename, " first valid True=", first_valid_frame)
         for i in tqdm(range(num)):
             success, frame = video_cap.read()
             if success == False:
                 assert('load video frames error')
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            try:
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            except:
+                frame=last_frame
+                print("frame=", frame)
+                print("cvtcolor error")
+                cv2.imwrite(f"{args.output_path}/tmp_bad.jpg", frame)
+
             # We proprocess the video by detecting the face in the first frame, 
             # and resizing the frame so that the eye distance is 64 pixels.
             # Centered on the eyes, we crop the first frame to almost 400x400 (based on args.padding).
@@ -130,7 +149,7 @@ if __name__ == "__main__":
                     frame = cv2.resize(frame, (w, h))[top:bottom, left:right]
                 else:
                     H, W = frame.shape[0], frame.shape[1]
-
+                print("first valid frame")
                 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
                 videoWriter = cv2.VideoWriter(cropname, fourcc, video_cap.get(5), (W, H))
                 videoWriter2 = cv2.VideoWriter(savename, fourcc, video_cap.get(5), (4*W, 4*H))
@@ -138,15 +157,28 @@ if __name__ == "__main__":
                 # For each video, we detect and align the face in the first frame for pSp to obtain the style code. 
                 # This style code is used for all other frames.
                 with torch.no_grad():
-                    I = align_face(frame, landmarkpredictor)
-                    I = transform(I).unsqueeze(dim=0).to(device)
-                    s_w = pspencoder(I)
-                    s_w = vtoonify.zplus2wplus(s_w)
-                    if vtoonify.backbone == 'dualstylegan':
-                        if args.color_transfer:
-                            s_w = exstyle
-                        else:
-                            s_w[:,:7] = exstyle[:,:7]
+                    try:
+                        I = align_face(frame, landmarkpredictor)
+                        I = transform(I).unsqueeze(dim=0).to(device)
+                        s_w = pspencoder(I)
+                        s_w = vtoonify.zplus2wplus(s_w)
+                        if vtoonify.backbone == 'dualstylegan':
+                            if args.color_transfer:
+                                s_w = exstyle
+                            else:
+                                s_w[:,:7] = exstyle[:,:7]
+                    except:
+                        frame=last_frame
+                        I = align_face(frame, landmarkpredictor)
+                        I = transform(I).unsqueeze(dim=0).to(device)
+                        s_w = pspencoder(I)
+                        s_w = vtoonify.zplus2wplus(s_w)
+                        if vtoonify.backbone == 'dualstylegan':
+                            if args.color_transfer:
+                                s_w = exstyle
+                            else:
+                                s_w[:,:7] = exstyle[:,:7]
+
                 first_valid_frame = False
             elif args.scale_image:
                 if scale <= 0.75:
@@ -177,12 +209,15 @@ if __name__ == "__main__":
                     y_tilde = torch.clamp(y_tilde, -1, 1)
                 for k in range(y_tilde.size(0)):
                     videoWriter2.write(tensor2cv2(y_tilde[k].cpu()))
-
+            last_frame=frame
         videoWriter.release()
         videoWriter2.release()
         video_cap.release()
 
-    
+        finalname = savename.replace(".mp4", "_audio.mp4")
+        os.system(f"ffmpeg -i {savename} -i {args.content} -c:v copy -c:a aac {finalname} -max_muxing_queue_size 9999")
+
+     
     else:
         cropname = os.path.join(args.output_path, basename + '_input.jpg')
         savename = os.path.join(args.output_path, basename + '_vtoonify_' +  args.backbone[0] + '.jpg')
@@ -228,5 +263,6 @@ if __name__ == "__main__":
 
         cv2.imwrite(cropname, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
         save_image(y_tilde[0].cpu(), savename)
-        
+
+       
     print('Transfer style successfully!')

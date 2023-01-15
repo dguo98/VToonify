@@ -111,8 +111,19 @@ if __name__ == "__main__":
         cropname = os.path.join(args.output_path, basename + '_input.mp4')
         savename = os.path.join(args.output_path, basename + '_vtoonify_' +  args.backbone[0] + '.mp4')
         
+        # HACK (demi)
+        #video_cap = cv2.VideoCapture(filename)
+        #num = int(video_cap.get(7))
         video_cap = cv2.VideoCapture(filename)
-        num = int(video_cap.get(7))
+        num = 0
+        while True:
+            success, frame = video_cap.read()
+            if success == False:
+                break
+            num += 1
+        print("nums = ", num)
+        video_cap = cv2.VideoCapture(filename)
+
 
 
         # end_style_ratio =  (1.0*i) / num
@@ -121,6 +132,7 @@ if __name__ == "__main__":
         batch_frames = []
         last_frame=None
         print("filenmae =", filename, " first valid True=", first_valid_frame)
+        print("num=",num)
         for i in tqdm(range(num)):
             success, frame = video_cap.read()
             if success == False:
@@ -170,18 +182,37 @@ if __name__ == "__main__":
 
             # This style code is used for all other frames.
             with torch.no_grad():
-                I = align_face(frame, landmarkpredictor)
-                I = transform(I).unsqueeze(dim=0).to(device)
-                s_w = pspencoder(I)
-                s_w = vtoonify.zplus2wplus(s_w)
+                try:
+                    I = align_face(frame, landmarkpredictor)
+                    I = transform(I).unsqueeze(dim=0).to(device)
+                    s_w = pspencoder(I)
+                    s_w = vtoonify.zplus2wplus(s_w)
+                    
+                    end_style_ratio = (1.0 * i) / num
+                    cur_exstyle = end_exstyle * end_style_ratio + exstyle * (1-end_style_ratio)
+                    if vtoonify.backbone == 'dualstylegan':
+                        if args.color_transfer:
+                            s_w = cur_exstyle
+                        else:
+                            s_w[:,:7] = cur_exstyle[:,:7]
 
-                end_style_ratio = (1.0 * i) / num
-                cur_exstyle = end_exstyle * end_style_ratio + exstyle * (1-end_style_ratio)
-                if vtoonify.backbone == 'dualstylegan':
-                    if args.color_transfer:
-                        s_w = cur_exstyle
-                    else:
-                        s_w[:,:7] = cur_exstyle[:,:7]
+                except:
+                    frame=last_frame
+                    I = align_face(frame, landmarkpredictor)
+                    I = transform(I).unsqueeze(dim=0).to(device)
+                    s_w = pspencoder(I)
+                    s_w = vtoonify.zplus2wplus(s_w)
+                    
+                    end_style_ratio = (1.0 * i) / num
+                    cur_exstyle = end_exstyle * end_style_ratio + exstyle * (1-end_style_ratio)
+                    if vtoonify.backbone == 'dualstylegan':
+                        if args.color_transfer:
+                            s_w = cur_exstyle
+                        else:
+                            s_w[:,:7] = cur_exstyle[:,:7]
+
+            first_valid_frame = False
+
 
             videoWriter.write(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
 
@@ -209,6 +240,9 @@ if __name__ == "__main__":
         videoWriter.release()
         videoWriter2.release()
         video_cap.release()
+        
+        finalname = savename.replace(".mp4", "_audio.mp4")
+        os.system(f"ffmpeg -i {savename} -i {args.content} -c:v copy -c:a aac {finalname} -max_muxing_queue_size 9999")
 
     
     print('Transfer style successfully!')
