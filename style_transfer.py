@@ -109,6 +109,9 @@ if __name__ == "__main__":
                 break
             num += 1
         print("nums = ", num)
+
+        print('Saving result to ' + savename)
+
         video_cap = cv2.VideoCapture(filename)
 
 
@@ -116,7 +119,6 @@ if __name__ == "__main__":
         first_valid_frame = True
         batch_frames = []
         last_frame=None
-        print("filenmae =", filename, " first valid True=", first_valid_frame)
         for i in tqdm(range(num)):
             success, frame = video_cap.read()
             if success == False:
@@ -125,8 +127,6 @@ if __name__ == "__main__":
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             except:
                 frame=last_frame
-                print("frame=", frame)
-                print("cvtcolor error")
                 cv2.imwrite(f"{args.output_path}/tmp_bad.jpg", frame)
 
             # We proprocess the video by detecting the face in the first frame, 

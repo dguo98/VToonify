@@ -29,7 +29,7 @@ import math
 SHAPE_PREDICTOR_PATH = 'shape_predictor_68_face_landmarks.dat'#model_paths["shape_predictor"]
 
 
-def get_landmark(filepath, predictor):
+def get_landmark(filepath, predictor, retry=10):
     """get landmark with dlib
     :return: np.array shape=(68, 2)
     """
@@ -38,10 +38,15 @@ def get_landmark(filepath, predictor):
         img = dlib.load_rgb_image(filepath)
     else:
         img = filepath
-    dets = detector(img, 1)
+    r = retry
+    while r > 0:
+        dets = detector(img, 1)
+        if len(dets) > 0:
+            break
+        r -= 1
     
-    if len(dets) == 0:
-        print('Error: no face detected! If you are sure there are faces in your input, you may rerun the code or change the image several times until the face is detected. Sometimes the detector is unstable.')
+    if r == 0:
+        print(f'Error: no face detected after {retry} retries! If you are sure there are faces in your input, you may rerun the code or change the image several times until the face is detected. Sometimes the detector is unstable.')
         return None
     
     shape = None

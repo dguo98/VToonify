@@ -140,10 +140,10 @@ if __name__ == "__main__":
             try:
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             except:
-                frame=last_frame
-                print("frame=", frame)
-                print("cvtcolor error")
-                cv2.imwrite(f"{args.output_path}/tmp_bad.jpg", frame)
+                print(f"frame {i} cvtcolor error, reusing the previous frame")
+                cv2.imwrite(f"{args.output_path}/read_bad_{i}.jpg", frame)
+                frame = last_frame
+            last_frame = frame
 
             # We proprocess the video by detecting the face in the first frame, 
             # and resizing the frame so that the eye distance is 64 pixels.
@@ -236,7 +236,6 @@ if __name__ == "__main__":
                     y_tilde = torch.clamp(y_tilde, -1, 1)
                 for k in range(y_tilde.size(0)):
                     videoWriter2.write(tensor2cv2(y_tilde[k].cpu()))
-            last_frame=frame
         videoWriter.release()
         videoWriter2.release()
         video_cap.release()
