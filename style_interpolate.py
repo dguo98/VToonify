@@ -119,7 +119,7 @@ if __name__ == "__main__":
 
         first_valid_frame = True
         batch_frames = []
-        last_frame = None
+        last_frame, last_face = None, None
         print("filename =", filename, " first valid True=", first_valid_frame)
         for i in tqdm(range(num)):
             success, frame = video_cap.read()
@@ -128,9 +128,9 @@ if __name__ == "__main__":
             try:
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             except:
-                frame = last_frame
                 print(f"frame {i} cvtcolor error, reusing the previous frame")
-                cv2.imwrite(f"{args.output_path}/tmp_bad_{i}.jpg", frame)
+                cv2.imwrite(f"{args.output_path}/read_bad_{i}.jpg", frame)
+                frame = last_frame
             last_frame = frame
 
             # We proprocess the video by detecting the face in the first frame, 
@@ -171,7 +171,13 @@ if __name__ == "__main__":
             # This style code is used for all other frames.
             with torch.no_grad():
                 I = align_face(frame, landmarkpredictor)
-                I = transform(I).unsqueeze(dim=0).to(device)
+                try:
+                    I = transform(I).unsqueeze(dim=0).to(device)
+                except:
+                    print(f"frame {i} face detection error, reusing the previous frame")
+                    cv2.imwrite(f"{args.output_path}/detect_bad_{i}.jpg", frame)
+                    I = last_face
+                last_face = I
                 s_w = pspencoder(I)
                 s_w = vtoonify.zplus2wplus(s_w)
 
