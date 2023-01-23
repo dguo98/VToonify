@@ -129,7 +129,7 @@ if __name__ == "__main__":
         # end_style_ratio =  (1.0*i) / num
 
         first_valid_frame = True
-        batch_frames = []
+        batch_frames, batch_s_w = [], []
         last_frame, last_I = None, None
         print("filenmae =", filename, " first valid True=", first_valid_frame)
         print("num=",num)
@@ -200,6 +200,7 @@ if __name__ == "__main__":
                         s_w = cur_exstyle
                     else:
                         s_w[:,:7] = cur_exstyle[:,:7]
+                batch_s_w.append(s_w)
 
             videoWriter.write(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
 
@@ -207,7 +208,8 @@ if __name__ == "__main__":
 
             if len(batch_frames) == args.batch_size or (i+1) == num:
                 x = torch.cat(batch_frames, dim=0)
-                batch_frames = []
+                s_w = torch.cat(batch_s_w, dim=0)
+                batch_frames, batch_s_w = [], []
                 with torch.no_grad():
                     # parsing network works best on 512x512 images, so we predict parsing maps on upsmapled frames
                     # followed by downsampling the parsing maps
@@ -219,7 +221,7 @@ if __name__ == "__main__":
                     # we give parsing maps lower weight (1/16)
                     inputs = torch.cat((x, x_p/16.), dim=1)
                     # d_s has no effect when backbone is toonify
-                    y_tilde = vtoonify(inputs, s_w.repeat(inputs.size(0), 1, 1), d_s = args.style_degree)       
+                    y_tilde = vtoonify(inputs, s_w, d_s = args.style_degree)       
                     y_tilde = torch.clamp(y_tilde, -1, 1)
                 for k in range(y_tilde.size(0)):
                     videoWriter2.write(tensor2cv2(y_tilde[k].cpu()))
