@@ -130,7 +130,7 @@ if __name__ == "__main__":
 
         first_valid_frame = True
         batch_frames = []
-        last_frame=None
+        last_frame, last_I = None, None
         print("filenmae =", filename, " first valid True=", first_valid_frame)
         print("num=",num)
         for i in tqdm(range(num)):
@@ -141,7 +141,6 @@ if __name__ == "__main__":
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             except:
                 print(f"frame {i} cvtcolor error, reusing the previous frame")
-                cv2.imwrite(f"{args.output_path}/read_bad_{i}.jpg", frame)
                 frame = last_frame
             last_frame = frame
 
@@ -184,35 +183,23 @@ if __name__ == "__main__":
             with torch.no_grad():
                 try:
                     I = align_face(frame, landmarkpredictor)
-                    I = transform(I).unsqueeze(dim=0).to(device)
-                    s_w = pspencoder(I)
-                    s_w = vtoonify.zplus2wplus(s_w)
-                    
-                    end_style_ratio = (1.0 * i) / num
-                    cur_exstyle = end_exstyle * end_style_ratio + exstyle * (1-end_style_ratio)
-                    if vtoonify.backbone == 'dualstylegan':
-                        if args.color_transfer:
-                            s_w = cur_exstyle
-                        else:
-                            s_w[:,:7] = cur_exstyle[:,:7]
-
                 except:
-                    frame=last_frame
-                    I = align_face(frame, landmarkpredictor)
-                    I = transform(I).unsqueeze(dim=0).to(device)
-                    s_w = pspencoder(I)
-                    s_w = vtoonify.zplus2wplus(s_w)
-                    
-                    end_style_ratio = (1.0 * i) / num
-                    cur_exstyle = end_exstyle * end_style_ratio + exstyle * (1-end_style_ratio)
-                    if vtoonify.backbone == 'dualstylegan':
-                        if args.color_transfer:
-                            s_w = cur_exstyle
-                        else:
-                            s_w[:,:7] = cur_exstyle[:,:7]
+                    print(f"frame {i} detection error, reusing the previous frame")
+                    cv2.imwrite(f"{args.output_path}/detect_bad_{i}.jpg", frame)
+                    I = last_I
+                last_I = I
 
-            first_valid_frame = False
-
+                I = transform(I).unsqueeze(dim=0).to(device)
+                s_w = pspencoder(I)
+                s_w = vtoonify.zplus2wplus(s_w)
+                
+                end_style_ratio = (1.0 * i) / num
+                cur_exstyle = end_exstyle * end_style_ratio + exstyle * (1-end_style_ratio)
+                if vtoonify.backbone == 'dualstylegan':
+                    if args.color_transfer:
+                        s_w = cur_exstyle
+                    else:
+                        s_w[:,:7] = cur_exstyle[:,:7]
 
             videoWriter.write(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
 

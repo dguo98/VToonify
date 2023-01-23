@@ -69,7 +69,7 @@ def align_face(filepath, predictor):
 
     lm = get_landmark(filepath, predictor)
     if lm is None:
-        return None    
+        raise RuntimeError('No face detected')
     
     lm_chin = lm[0: 17]  # left-right
     lm_eyebrow_left = lm[17: 22]  # left-right
