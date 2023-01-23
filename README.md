@@ -1,11 +1,18 @@
 Everyone can create your own branch!
 
-My branch: style_transfer. Command I used:
+My branch: `style_transfer`. Command I used:
 
+```bash
 python style_interpolate.py --scale_image --content ~/demiguo-scr/explore/vtoonify/data/halfbody_front_bright_whitebg.mp4 --video --style_id 9 --style_degree 1.0 --ckpt checkpoint/vtoonify_d_cartoon/vtoonify_s_d_c.pt --padding 450 450 300 300 --output_path ~/demiguo-scr/explore/vtoonify/logs/front_style_interpolate_cartoon9_to_cartoon7 --end_style_id 7 --color_transfer
 
 python style_transfer.py --scale_image --content ~/demiguo-scr/explore/vtoonify/data/halfbody_front_bright_whitebg.mp4 --video --style_id 9 --style_degree 0.5 --ckpt checkpoint/vtoonify_d_cartoon/vtoonify_s_d_c.pt --padding 450 450 300 300 --output_path ~/demiguo-scr/explore/vtoonify/logs/halfbody_front_bright_whitebg_cartoon9_sc_0p5
 
+# --split_time is optional, the default behavior is a even split
+python multi_style_interpolate.py --scale_image --content data/cut27.MXF --video
+--style_id 3 12 66 43 108 101 118 114 56 44 --split_time 0.2 0.4 0.6 0.7 0.8 0.9 0.9333 0.9667 \
+--style_degree 0.5 --ckpt checkpoint/vtoonify_d_impasto/vtoonify_s_d_c.pt --padding 450 450 300 300 \
+--output_path explore/vtoonify/impasto_multi --color_transfer
+```
 
 
 # VToonify - Official PyTorch Implementation
